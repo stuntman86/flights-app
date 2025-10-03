@@ -1,0 +1,21 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: flights-app
+  description: Flights application for Summit Connect demo
+  annotations:
+    github.com/project-slug: benjphipps/flights-app
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - flights
+    - demo
+    - summit-connect
+  links:
+    - url: https://github.com/benjphipps/flights-app
+      title: Repository
+      icon: github
+spec:
+  type: service
+  lifecycle: experimental
+  owner: user:benjphipps
+  system: flights-system
