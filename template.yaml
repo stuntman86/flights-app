@@ -3,7 +3,7 @@ kind: Template
 metadata:
   name: gitops-flights-deploy
   title: Deploy Flights App via GitOps
-  description: Fetch flights app manifests and create a GitOps repository
+  description: Create a GitOps repository with flights app manifests
   tags:
     - gitops
     - argocd
@@ -13,7 +13,7 @@ spec:
   type: service
   
   parameters:
-    - title: Application Configuration
+    - title: Provide Information
       required:
         - component_id
         - owner
@@ -26,13 +26,22 @@ spec:
         description:
           title: Description
           type: string
-          description: Name for your deployment
-          default: flights-app
-        namespace:
-          title: Target Namespace
+          description: Help others understand what this application is for
+          default: Flights application GitOps repository
+        owner:
+          title: Owner
           type: string
-          description: Kubernetes namespace to deploy to
-          default: flights
+          description: Owner of the component
+          ui:field: OwnerPicker
+          ui:options:
+            allowedKinds:
+              - Group
+              - User
+    
+    - title: Choose a location
+      required:
+        - repoUrl
+      properties:
         repoUrl:
           title: Repository Location
           type: string
@@ -42,61 +51,37 @@ spec:
               - github.com
 
   steps:
-    # Fetch the flights app manifests from your repo
-    - id: fetch
-      name: Fetch Flights App Manifests
-      action: fetch:plain
-      input:
-        url: https://github.com/stuntman86/flights-app/tree/main/
-        targetPath: ./content
-
-    # Optionally, you can use fetch:template to customize namespace
     - id: template
-      name: Process Templates
+      name: Fetch Skeleton + Template
       action: fetch:template
       input:
-        url: ./content/flights-app
+        url: ./skeleton
         values:
-          name: ${{ parameters.name }}
-          namespace: ${{ parameters.namespace }}
+          component_id: ${{ parameters.component_id }}
+          description: ${{ parameters.description }}
+          destination: ${{ parameters.repoUrl | parseRepoUrl }}
+          owner: ${{ parameters.owner }}
 
-    # Publish to a new GitHub repository
     - id: publish
-      name: Create GitOps Repository
+      name: Publish
       action: publish:github
       input:
         allowedHosts:
           - github.com
         description: This is ${{ parameters.component_id }}
         repoUrl: ${{ parameters.repoUrl }}
-        description: GitOps repository for ${{ parameters.name }}
-        defaultBranch: main
-        sourcePath: ./flights-app
 
-    # Create ArgoCD Application manifest
-    - id: create-argocd-manifest
-      name: Create ArgoCD Application
-      action: fetch:template
+    - id: register
+      name: Register
+      action: catalog:register
       input:
-        url: ./argocd
-        targetPath: ./argocd-app
-        values:
-          name: ${{ parameters.name }}
-          namespace: ${{ parameters.namespace }}
-          repoUrl: ${{ steps.publish.output.remoteUrl }}
-
-    # Publish ArgoCD app to the same repo
-    - id: publish-argocd
-      name: Add ArgoCD Application
-      action: publish:github
-      input:
-        repoUrl: ${{ parameters.repoUrl }}
-        defaultBranch: main
-        sourcePath: ./argocd-app
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: "/catalog-info.yaml"
 
   output:
     links:
       - title: Repository
         url: ${{ steps.publish.output.remoteUrl }}
-      - title: Open in GitHub
-        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}
