@@ -4,23 +4,37 @@ metadata:
   name: gitops-flights-deploy
   title: Deploy Flights App via GitOps
   description: Fetch flights app manifests and create a GitOps repository
+  tags:
+    - gitops
+    - argocd
+    - flights
 spec:
   owner: platform-team
   type: service
   
   parameters:
-    - title: Configuration
+    - title: Application Configuration
       required:
-        - name
-        - repoUrl
+        - component_id
+        - owner
       properties:
-        name:
-          title: Application Name
+        component_id:
+          title: Name
           type: string
-          description: Name for your GitOps repository
+          description: Unique name of the component
+          ui:field: EntityNamePicker
+        description:
+          title: Description
+          type: string
+          description: Name for your deployment
           default: flights-app
+        namespace:
+          title: Target Namespace
+          type: string
+          description: Kubernetes namespace to deploy to
+          default: flights
         repoUrl:
-          title: Target GitOps Repository
+          title: Repository Location
           type: string
           ui:field: RepoUrlPicker
           ui:options:
@@ -28,25 +42,61 @@ spec:
               - github.com
 
   steps:
-    # Fetch the flights-app manifests from source repo
+    # Fetch the flights app manifests from your repo
     - id: fetch
       name: Fetch Flights App Manifests
       action: fetch:plain
       input:
-        url: https://github.com/stuntman86/flights-app/tree/main/flights-app
+        url: https://github.com/stuntman86/flights-app/tree/main/
+        targetPath: ./content
 
-    # Publish to new GitHub repository
+    # Optionally, you can use fetch:template to customize namespace
+    - id: template
+      name: Process Templates
+      action: fetch:template
+      input:
+        url: ./content/flights-app
+        values:
+          name: ${{ parameters.name }}
+          namespace: ${{ parameters.namespace }}
+
+    # Publish to a new GitHub repository
     - id: publish
-      name: Publish to GitHub
+      name: Create GitOps Repository
+      action: publish:github
+      input:
+        allowedHosts:
+          - github.com
+        description: This is ${{ parameters.component_id }}
+        repoUrl: ${{ parameters.repoUrl }}
+        description: GitOps repository for ${{ parameters.name }}
+        defaultBranch: main
+        sourcePath: ./flights-app
+
+    # Create ArgoCD Application manifest
+    - id: create-argocd-manifest
+      name: Create ArgoCD Application
+      action: fetch:template
+      input:
+        url: ./argocd
+        targetPath: ./argocd-app
+        values:
+          name: ${{ parameters.name }}
+          namespace: ${{ parameters.namespace }}
+          repoUrl: ${{ steps.publish.output.remoteUrl }}
+
+    # Publish ArgoCD app to the same repo
+    - id: publish-argocd
+      name: Add ArgoCD Application
       action: publish:github
       input:
         repoUrl: ${{ parameters.repoUrl }}
-        description: GitOps repository for ${{ parameters.name }} - monitored by ArgoCD
         defaultBranch: main
+        sourcePath: ./argocd-app
 
   output:
     links:
-      - title: GitOps Repository
+      - title: Repository
         url: ${{ steps.publish.output.remoteUrl }}
-      - title: View Files
-        url: ${{ steps.publish.output.remoteUrl }}/tree/main
+      - title: Open in GitHub
+        url: ${{ steps.publish.output.remoteUrl }}
