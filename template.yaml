@@ -17,13 +17,10 @@ spec:
         name:
           title: Application Name
           type: string
+          description: Name for your GitOps repository
           default: flights-app
-        namespace:
-          title: Target Namespace
-          type: string
-          default: flights
         repoUrl:
-          title: Target Repository
+          title: Target GitOps Repository
           type: string
           ui:field: RepoUrlPicker
           ui:options:
@@ -31,25 +28,25 @@ spec:
               - github.com
 
   steps:
-    # Fetch the flights-app manifests
+    # Fetch the flights-app manifests from source repo
     - id: fetch
       name: Fetch Flights App Manifests
       action: fetch:plain
       input:
         url: https://github.com/stuntman86/flights-app/tree/main/flights-app
 
-    # Publish to GitHub
+    # Publish to new GitHub repository
     - id: publish
       name: Publish to GitHub
       action: publish:github
       input:
         repoUrl: ${{ parameters.repoUrl }}
-        description: GitOps repository for ${{ parameters.name }}
+        description: GitOps repository for ${{ parameters.name }} - monitored by ArgoCD
         defaultBranch: main
 
   output:
     links:
-      - title: Repository
+      - title: GitOps Repository
         url: ${{ steps.publish.output.remoteUrl }}
-      - title: Create ArgoCD App
-        url: https://argocd-server-argocd.apps.YOUR-CLUSTER-DOMAIN/applications?new=true
+      - title: View Files
+        url: ${{ steps.publish.output.remoteUrl }}/tree/main
