@@ -1,9 +1,11 @@
 apiVersion: backstage.io/v1alpha1
-kind: Location
+kind: Component
 metadata:
-  name: flights-app-templates
-  description: Flight App Templates and Components
+  name: ${{ values.component_id }}
+  description: ${{ values.description }}
+  annotations:
+    github.com/project-slug: ${{ values.destination.owner }}/${{ values.destination.repo }}
 spec:
-  targets:
-    - ./template.yaml
-    - ./flights-app/catalog-info.yaml
+  type: service
+  lifecycle: production
+  owner: ${{ values.owner }}
