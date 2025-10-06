@@ -1,9 +1,9 @@
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
-  name: gitops-flights-deploy
-  title: Deploy Flights App via GitOps
-  description: Create a GitOps repository with flights app manifests
+  name: flights-deploy
+  title: Deploy Flights
+  description: Create a repo with flights app manifests
   tags:
     - gitops
     - argocd
@@ -26,7 +26,7 @@ spec:
         description:
           title: Description
           type: string
-          description: Help others understand what this application is for
+          description: What tthis app is for
           default: Flights application GitOps repository
         owner:
           title: Owner
